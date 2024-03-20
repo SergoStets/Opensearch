@@ -1,51 +1,53 @@
 # Установка и настройка кластера OpenSearch
-# Данная гайд был написан на версии opensearch 2.12. 
-# Кластер будет состоять из 3 master node и 2 data node.
-* При использовании меньшего колличества МАСТЕР нод кластер будет держаться только на 1 мастер ноде которая будет так же исполнять роль дата роли  
-Все действия будут выполняться от пользователя user.
+## Данная гайд был написан на версии opensearch 2.12. 
+## Кластер будет состоять из 3 master node и 2 data node.
+### При использовании меньшего колличества МАСТЕР нод кластер будет держаться только на 1 мастер ноде которая будет так же исполнять роль дата роли  
+### Все действия будут выполняться от пользователя user.
 
 Скачаиваем актуальный архив:
 
-wget https://artifacts.opensearch.org/releases/bundle/opensearch/2.12.0/opensearch-2.12.0-linux-x64.tar.gz
+`wget https://artifacts.opensearch.org/releases/bundle/opensearch/2.12.0/opensearch-2.12.0-linux-x64.tar.gz`
 
 Даем права на выполнение для архива:
 
-sudo chmod +x opensearch-2.12.0-linux-x64.tar.gz
+`sudo chmod +x opensearch-2.12.0-linux-x64.tar.gz`
 
 Распаковываем архив:
 
-sudo tar -xf opensearch-2.12.0-linux-x64.tar.gz
+`sudo tar -xf opensearch-2.12.0-linux-x64.tar.gz`
 
 Будем устанавливать OpenSearch в каталог «/opt/opensearch», поэтому создаем рабочий каталог для OpenSearch:
 
-sudo mkdir /opt/opensearch
+`sudo mkdir /opt/opensearch`
 
 Переносим распакованные данные в рабочий каталог:
 
-sudo mv ./opensearch-2.12.0/* /opt/opensearch
+`sudo mv ./opensearch-2.12.0/* /opt/opensearch`
 
-# Мы будем использовать пользователя user для запуска сервиса!
+### Мы будем использовать пользователя user для запуска сервиса!
 
-sudo chown -R user:user /opt/opensearch
+`sudo chown -R user:user /opt/opensearch`
 
 Переходим в директорию 
 
-cd /opt/opensearch
+`cd /opt/opensearch`
 
 Обьявляем переменное окружение:
 
-export OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password> #Замените на свой пароль СЛОЖНЫЙ!
+`export OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password>`  
+**Замените на свой пароль СЛОЖНЫЙ!**
 
 Запускаем скрипт от пользователя user 
 
-./opensearch-tar-install.sh
+`./opensearch-tar-install.sh`
 
 Открываем второй терминал и подключаемся к серверу:
 Проверяем работоспособность машины 
 
-curl -X GET https://localhost:9200 -u 'admin:<custom-admin-password>' --insecure
+`curl -X GET https://localhost:9200 -u 'admin:<custom-admin-password>' --insecure`
 
 Должны получить:
+```
  {
     "name" : "hostname",
     "cluster_name" : "opensearch",
@@ -63,12 +65,13 @@ curl -X GET https://localhost:9200 -u 'admin:<custom-admin-password>' --insecure
     },
     "tagline" : "The OpenSearch Project: https://opensearch.org/"
  }
-
+```
 
 Проверяем установленые плагины:
-curl -X GET https://localhost:9200/_cat/plugins?v -u 'admin:<custom-admin-password>' --insecure
+`curl -X GET https://localhost:9200/_cat/plugins?v -u 'admin:<custom-admin-password>' --insecure`
 
 Должны получить:
+```
  name     component                            version
  hostname opensearch-alerting                  2.12.0
  hostname opensearch-anomaly-detection         2.12.0
@@ -85,22 +88,21 @@ curl -X GET https://localhost:9200/_cat/plugins?v -u 'admin:<custom-admin-passwo
  hostname opensearch-reports-scheduler         2.12.0
  hostname opensearch-security                  2.12.0
  hostname opensearch-sql                       2.12.0
-
+```
 
 После того как мы увидели что сервер работает отсанавливаем Ctrl+C 
 
------------------------------------------------------------------------
+***-----------------------------------------------------------------------***
 
-
-После нам надо сделать начальную настройку ноды для иницилизации плагина безопасности и настроем потребление оперативной памяти. 
+### После нам надо сделать начальную настройку ноды для иницилизации плагина безопасности и настроем потребление оперативной памяти. 
+#### Я использую Vim для редоктирования конфигов, вы можете использовать nano или тот редоктор который вам удобен! 
 
 Редоктируем файл конфигурации: 
-# Я использую Vim для редоктирования конфигов, вы можете использовать nano или тот редоктор который вам удобен! 
 
-sudo vim /opt/opensearch/config/opensearch.yml
+`sudo vim /opt/opensearch/config/opensearch.yml`
 
 Раскоментируем следующие поля:
-
+```
 # Bind OpenSearch to the correct network interface. Use 0.0.0.0
 # to include all available interfaces or specify an IP address
 # assigned to a specific interface.
@@ -114,33 +116,38 @@ discovery.type: single-node
 # If you previously disabled the Security plugin in opensearch.yml,
 # be sure to re-enable it. Otherwise you can skip this setting.
 plugins.security.disabled: false
-
+```
 Сохраняем! 
 
-sudo vim /opt/opensearch/config/jvm.options
+`sudo vim /opt/opensearch/config/jvm.options`
 
 Устанавлием сколько гигабайт отдадим opensearch. 
-
+```
 -Xms4g
 -Xmx4g
-
+```
 Сохраняем! 
 
 Обновляем переменные окружения 
 
-export OPENSEARCH_JAVA_HOME=/opt/opensearch/jdk
+`export OPENSEARCH_JAVA_HOME=/opt/opensearch/jdk`
 
-----------------------------------------------------------------------
+***-----------------------------------------------------------------------***
 
 
-Теперь выпустим TLS certificates
+### Теперь выпустим TLS certificates
 
 Так как у нас несколько нод мы будем выпускам скриптом. 
 
-cd /opt/opensearch/config/
+`cd /opt/opensearch/config/`
 
-vim add_cert.sh
+Создаем файл скрипта 
 
+`vim add_cert.sh`
+
+Вставляем в скрипт 
+
+```
 #!/bin/sh
 # Не забываем менять DNS запись на актуальное hostname ваших нод! 
 # Root CA
@@ -184,23 +191,24 @@ rm node2.ext
 rm client-key-temp.pem
 rm client.csr
 rm client.ext
-
+```
 
 Сохраняем!
 Делаем файл исполняемым.
 
-sudo chomd  a+x  ./add_cert.sh
+`sudo chomd  a+x  ./add_cert.sh`
 
 Запускам скрипт 
 
-./add_cert.sh
+`./add_cert.sh`
 
 Сертификаты должны лежать в /opt/opensearch/config/ на всех машинах свои!
 Так же добавляем в запись в файл конфигурации 
-# НЕ ЗАБЫВАЕМ ЗАКОМЕНТИРОВАТЬ/УДАЛИТЬ ссылки на демо конфигурации 
+### НЕ ЗАБЫВАЕМ ЗАКОМЕНТИРОВАТЬ/УДАЛИТЬ ссылки на демо конфигурации 
 
-sudo vim /opt/opensearch/config/opensearch.yml
+`sudo vim /opt/opensearch/config/opensearch.yml`
 
+```
 plugins.security.ssl.transport.pemcert_filepath: node1.pem
 plugins.security.ssl.transport.pemkey_filepath: node1-key.pem
 plugins.security.ssl.transport.pemtrustedcas_filepath: root-ca.pem
@@ -214,37 +222,38 @@ plugins.security.authcz.admin_dn:
 plugins.security.nodes_dn:
   - 'CN=node1.dns.a-record,OU=UNIT,O=ORG,L=TORONTO,ST=ONTARIO,C=CA'
   - 'CN=node2.dns.a-record,OU=UNIT,O=ORG,L=TORONTO,ST=ONTARIO,C=CA'
+```
+### Не забываем менять ДНС записи на актуальные и названия ключей для кажной ноды нужны свои ключи кроме root и admin ключей! 
 
-# Не забываем менять ДНС записи на актуальные и названия ключей для кажной ноды нужны свои ключи кроме root и admin ключей! 
+***-----------------------------------------------------------------------***
 
-----------------------------
+### Настраиваем user который будет для входа в opensearch.
 
-Настраиваем user который будет для входа в opensearch! 
 Делайем икрипты исполняемым нашим пользователем
 
-chmod 755 /opt/opensearch/plugins/opensearch-security/tools/*.sh
+`chmod 755 /opt/opensearch/plugins/opensearch-security/tools/*.sh`
 
 Переходим в директорию 
 
-cd /opt/opensearch/plugins/opensearch-security/tools/
+`cd /opt/opensearch/plugins/opensearch-security/tools/`
 
 Запускам крипт 
 
-./hash.sh
+`./hash.sh`
 
 Если выдает ошибку то обновите переменнае окружения 
 
-OPENSEARCH_JAVA_HOME=/opt/opensearch/jdk ./hash.sh
+`OPENSEARCH_JAVA_HOME=/opt/opensearch/jdk ./hash.sh`
 
 Устанавливаем новый пароль и сохраняем Hash ключ 
 
 Открываем файл 
 
-sudo vim /opt/opensearch/config/opensearch-security/internal_users.yml
+`sudo vim /opt/opensearch/config/opensearch-security/internal_users.yml`
 
-# Коментируем или удаляем всех пользоватлей кроме admin 
+### Коментируем или удаляем всех пользоватлей кроме admin 
 Пример:
-
+```
 ---
 # This is the internal user database
 # The hash value is a bcrypt hash and can be generated with plugin/tools/hash.sh
@@ -261,42 +270,43 @@ admin:
    backend_roles:
    - "admin"
    description: "Admin user"
-
+```
 
 Сохраняем!
---------------------------------------------------------------------------------
+***-----------------------------------------------------------------------***
 
-
-Применяем изменения 
+## Применяем изменения и иницилизируем плагин безопасности  
 
 Переходим в директорию 
 
-cd /opt/opensearch/bin
+`cd /opt/opensearch/bin`
 
 Запускам сервис 
 
-./opensearch
+`./opensearch`
 
 Переходим во второй терминал с подключением к данному серверу:
 
 Переходим в директорию 
 
-cd /opt/opensearch/plugins/opensearch-security/tools
+`cd /opt/opensearch/plugins/opensearch-security/tools`
 
 Запускам иницилизацию плагина безопасности 
 
-OPENSEARCH_JAVA_HOME=/opt/opensearch/jdk ./securityadmin.sh -cd /opt/opensearch/config/opensearch-security/ -cacert /opt/opensearch/config/root-ca.pem -cert /opt/opensearch/config/admin.pem -key /opt/opensearch/config/admin-key.pem -icl -nhnv
+`OPENSEARCH_JAVA_HOME=/opt/opensearch/jdk ./securityadmin.sh -cd /opt/opensearch/config/opensearch-security/ -cacert /opt/opensearch/config/root-ca.pem -cert /opt/opensearch/config/admin.pem -key /opt/opensearch/config/admin-key.pem -icl -nhnv`
 
 Сервер должен иницилизировать все сертификаты. 
 
 
----------------------------------------------------------------------------------
+***-----------------------------------------------------------------------***
 
+## Создаем сервис 
 
-Создаем сервис 
+`sudo vi /etc/systemd/system/opensearch.service`
 
-sudo vi /etc/systemd/system/opensearch.service
+Вставляем в файл:
 
+```
 [Unit]
 Description=OpenSearch
 Wants=network-online.target
@@ -326,39 +336,41 @@ TimeoutStartSec=75
 
 [Install]
 WantedBy=multi-user.target
-
+```
 
 
 Сохраняем !
 
 Перезугрузка демона 
 
-sudo systemctl daemon-reload
+`sudo systemctl daemon-reload`
 
 Включаем автозазагрузки демона 
 
-sudo systemctl enable opensearch.service
+`sudo systemctl enable opensearch.service`
 
 Включаем сервис 
 
-sudo systemctl start opensearch
+`sudo systemctl start opensearch`
 
 Проверяем статус сервиса 
 
-sudo systemctl status opensearch
+`sudo systemctl status opensearch`
 
----------------------------------------------------------------------------
+***-----------------------------------------------------------------------***
 
 
-После того как мы выполнили данные операции на всех нодах которые мы хотим ввести в кластер. 
+### Выполнили данные операции на всех нодах которые вводим в кластер. 
+
 Останавливаем сервисы командой на всех нода  
 
-sudo systemctl stop opensearch
+`sudo systemctl stop opensearch`
 
 После этого переходим на master-node-01 
 
-sudo vim /opt/opensearch/config/opensearch.yml 
+`sudo vim /opt/opensearch/config/opensearch.yml `
 
+```
 cluster.name: Имя вашего ноды
 node.name: Ваше имя ноды 
 node.roles: [ master , data ] 
@@ -367,6 +379,7 @@ http.port: 9200 #порт по умолчани
 discovery.seed_hosts: [ "ip node ", "ip node" ]
 cluster.initial_master_nodes: [ "dns name your master node ", "dns name your master node " ]
 plugins.security.disabled: false
+```
 
 Важно что первая мастер нода должны запуститься с ролями  master и data.
 
@@ -374,17 +387,17 @@ plugins.security.disabled: false
 
 Дата ноды указываем с ролей 
 
-node.roles: [ data, ingest ]
+`node.roles: [ data, ingest ]`
 
 Проверить что node добавились в кластер можно запросом к API 
 
-curl -XGET https://<private-ip>:9200/_cat/nodes?v -u 'admin:<custom-admin-password>' --insecure
+`curl -XGET https://<private-ip>:9200/_cat/nodes?v -u 'admin:<custom-admin-password>' --insecure`
 
 После добавляния всех нод можно с первой нодой убрать роль data и оставить только мастер! 
 
 Важно что при добавлении нод может возникать ошибка что на машине присутсвует data 
 Тогда следует удалить выполнить команду 
 
-rm -rf /opt/opensearch/data/* 
+`rm -rf /opt/opensearch/data/* `
 
 Кластер собран осталось только установить Opensearch-dashboard что бы получить доступ дашборду! 
